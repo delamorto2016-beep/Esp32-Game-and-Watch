@@ -15,18 +15,9 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: Clean project cache
+    - name: Build Firmware inside Docker Container
       run: |
-        cd gandw_demo_single_screen
-        rm -rf build
-        rm -f dependencies.lock
-
-    - name: esp-idf build
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: 'v6.0'
-        target: 'esp32s3'
-        path: 'gandw_demo_single_screen'
+        docker run --rm -v ${{ github.workspace }}:/project -w /project/gandw_demo_single_screen espressif/idf:release-v6.0 idf.py build
 
     - name: Upload Firmware Artifact
       uses: actions/upload-artifact@v4
