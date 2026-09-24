@@ -17,10 +17,16 @@ jobs:
 
     - name: Build Firmware inside Docker Container
       run: |
-        docker run --rm -v ${{ github.workspace }}:/project -w /project/gandw_demo_single_screen espressif/idf:release-v6.0 /bin/bash -c ". /opt/esp/idf/export.sh && idf.py fullclean && idf.py build"
+        docker run --rm -v ${{ github.workspace }}:/project -w /project/gandw_demo_single_screen espressif/idf:release-v6.0 /bin/bash -c "
+          . /opt/esp/idf/export.sh && \
+          rm -rf build sdkconfig && \
+          idf.py set-target esp32s3 && \
+          idf.py build
+        "
 
     - name: Upload Firmware Artifact
       uses: actions/upload-artifact@v4
       with:
         name: game_and_watch_firmware
         path: gandw_demo_single_screen/build/*.bin
+
