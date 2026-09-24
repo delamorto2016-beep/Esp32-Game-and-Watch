@@ -15,6 +15,11 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Fix IDF Component Manager Lock
+      run: |
+        cd gandw_demo_single_screen
+        rm -f dependencies.lock
+
     - name: esp-idf build
       uses: espressif/esp-idf-ci-action@v1
       with:
@@ -27,3 +32,4 @@ jobs:
       with:
         name: game_and_watch_firmware
         path: gandw_demo_single_screen/build/*.bin
+
