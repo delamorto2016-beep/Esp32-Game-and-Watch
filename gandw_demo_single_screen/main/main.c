@@ -3,7 +3,7 @@
 #include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
-#include "esp_lcd_ili9341.h"
+#include "esp_lcd_panel_vendor.h"
 #include "driver/i2s_std.h"
 #include "freertos/FreeRTOS.h"
 #include <gw_system.h>
@@ -46,26 +46,16 @@ unsigned int gw_get_buttons()
 {
 	uint32_t hw_buttons = 0;
 
-	/*
-		GAME A: GW_BUTTON_GAME
-		GAME B: GW_BUTTON_TIME
-		Time: GW_BUTTON_B + GW_BUTTON_TIME
-		ALARM: GW_BUTTON_B + GW_BUTTON_GAME
-		ACL: gw_system_reset()
-		LEFT: GW_BUTTON_LEFT
-		RIGHT: GW_BUTTON_RIGHT
-	*/
-
 	if (gpio_get_level(BUTTON_TIME) == 0) {
-		hw_buttons |= GW_BUTTON_B + GW_BUTTON_TIME; 
+		hw_buttons |= GW_BUTTON_B + GW_BUTTON_TIME;
 	}
-	else if (gpio_get_level(BUTTON_RIGHT) == 0) { 
+	else if (gpio_get_level(BUTTON_RIGHT) == 0) {
 		hw_buttons |= GW_BUTTON_RIGHT;
 	}
 	else if (gpio_get_level(BUTTON_LEFT) == 0) {
 		hw_buttons |= GW_BUTTON_LEFT;
 	}
-	else if (gpio_get_level(BUTTON_GAME_A) == 0) { 
+	else if (gpio_get_level(BUTTON_GAME_A) == 0) {
 		hw_buttons |= GW_BUTTON_GAME;
 	}
 	else if (gpio_get_level(BUTTON_GAME_B) == 0) {
@@ -84,7 +74,7 @@ unsigned int gw_get_buttons()
 i2s_chan_handle_t setup_audio_i2s() {
 
 	i2s_chan_handle_t i2s_audio_handle;
-	
+
 	i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
 
 	ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &i2s_audio_handle, NULL));
@@ -97,7 +87,7 @@ i2s_chan_handle_t setup_audio_i2s() {
 			.bclk = AUD_I2S_BCK,    // Max98357 CLK
 			.ws = AUD_I2S_WS,       // Max98357 LRC
 			.dout = AUD_I2S_DATA,   // Max98357 DIN
-			.din = GPIO_NUM_NC,  
+			.din = GPIO_NUM_NC,
 		}
 	};
 
@@ -105,12 +95,9 @@ i2s_chan_handle_t setup_audio_i2s() {
 	ESP_ERROR_CHECK(i2s_channel_enable(i2s_audio_handle));
 
 	return i2s_audio_handle;
-
 }
 
-
-
- //st7789 lcd screen
+// st7789 lcd screen
 esp_lcd_panel_handle_t setup_lcd_spi() {
 
 	esp_lcd_panel_handle_t spi_lcd_handle = NULL;
@@ -136,7 +123,7 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 		.trans_queue_depth = 10
 	};
 	ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
-	
+
 	esp_lcd_panel_dev_config_t panel_config = {
 		.reset_gpio_num = LCD_RST,
 		.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
@@ -144,7 +131,7 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 	};
 
 	ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &spi_lcd_handle));
-	
+
 	ESP_ERROR_CHECK(esp_lcd_panel_reset(spi_lcd_handle));
 	ESP_ERROR_CHECK(esp_lcd_panel_init(spi_lcd_handle));
 	esp_lcd_panel_swap_xy(spi_lcd_handle, true);
@@ -154,7 +141,6 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 
 	return spi_lcd_handle;
 }
-*/
 
 void setup_buttons() {
 
@@ -185,15 +171,11 @@ void setup_buttons() {
 	esp_rom_gpio_pad_select_gpio(BUTTON_RIGHT);
 	gpio_set_direction(BUTTON_RIGHT, GPIO_MODE_INPUT);
 	gpio_set_pull_mode(BUTTON_RIGHT, GPIO_PULLUP_ONLY);
-
 }
 
 void app_main(void)
 {
-
-
 	// memory for sound and screen
-
 	uint16_t *framebuffer = (uint16_t *)heap_caps_malloc(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
 
 	uint16_t audio_buffer[GW_AUDIO_BUFFER_LENGTH];
@@ -235,10 +217,8 @@ void app_main(void)
 		display_update_count++;
 
 		gw_system_run(GW_SYSTEM_CYCLES);
-		
 
 		// lcd
-
 		if (display_update_count == 8) {
 
 			gw_system_blit(framebuffer);
@@ -246,23 +226,18 @@ void app_main(void)
 			esp_lcd_panel_draw_bitmap(spi_lcd_handle, 0, RENDER_PADDING, GW_SCREEN_WIDTH, RENDER_HEIGHT + RENDER_PADDING, framebuffer);
 
 			display_update_count = 0;
-
 		}
 
-
 		// audio
- 
 		for (size_t i = 0; i < GW_AUDIO_BUFFER_LENGTH; i++)
 		{
-
 			sample = 0;
-					   
+
 			if (gw_audio_buffer[i] > 0) {
 				sample = 2000;
 			}
 
 			audio_buffer[i] = sample;
-						
 		}
 
 		size_t bytes_written;
@@ -270,7 +245,5 @@ void app_main(void)
 		i2s_channel_write(i2s_audio_handle, audio_buffer, sizeof(audio_buffer), &bytes_written, portMAX_DELAY);
 
 		gw_audio_buffer_copied = true;
-
 	}
-
 }
