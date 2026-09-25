@@ -23,13 +23,13 @@
 #define BUTTON_ACL			GPIO_NUM_0   // Используется Boot-кнопка микроконтроллера для сброса
 
 // LCD
-#define LCD_PIXEL_CLOCK_HZ	(60 * 1000 * 1000)
+#define LCD_PIXEL_CLOCK_HZ	(40 * 1000 * 1000)
 #define LCD_CMD_BITS		8
 #define LCD_PARAM_BITS		8
 
 #define LCD_HOST			SPI2_HOST
-#define LCD_SCLK			10
-#define LCD_MOSI			11
+#define LCD_SCLK			5
+#define LCD_MOSI			4
 #define LCD_MISO			-1
 #define LCD_DC				8
 #define LCD_RST				14
