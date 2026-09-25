@@ -144,47 +144,26 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 	return spi_lcd_handle;
 }
 
-
-*/
-
 void setup_buttons() {
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_TIME);
-	gpio_set_direction(BUTTON_TIME, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_TIME, GPIO_PULLUP_ONLY);
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_GAME_A);
-	gpio_set_direction(BUTTON_GAME_A, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_GAME_A, GPIO_PULLUP_ONLY);
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_GAME_B);
-	gpio_set_direction(BUTTON_GAME_B, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_GAME_B, GPIO_PULLUP_ONLY);
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_ALARM);
-	gpio_set_direction(BUTTON_ALARM, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_ALARM, GPIO_PULLUP_ONLY);
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_ACL);
-	gpio_set_direction(BUTTON_ACL, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_ACL, GPIO_PULLUP_ONLY);
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_LEFT);
-	gpio_set_direction(BUTTON_LEFT, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_LEFT, GPIO_PULLUP_ONLY);
-
-	esp_rom_gpio_pad_select_gpio(BUTTON_RIGHT);
-	gpio_set_direction(BUTTON_RIGHT, GPIO_MODE_INPUT);
-	gpio_set_pull_mode(BUTTON_RIGHT, GPIO_PULLUP_ONLY);
-
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = (1ULL << BUTTON_TIME)   | 
+                        (1ULL << BUTTON_GAME_A) | 
+                        (1ULL << BUTTON_GAME_B) | 
+                        (1ULL << BUTTON_ALARM)  | 
+                        (1ULL << BUTTON_ACL)    | 
+                        (1ULL << BUTTON_LEFT)   | 
+                        (1ULL << BUTTON_RIGHT),
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_ENABLE // Кнопки подтягиваются к 3.3V и замыкаются на GND
+    };
+    gpio_config(&io_conf);
 }
 
 void app_main(void)
 {
-
-
 	// memory for sound and screen
-
 	uint16_t *framebuffer = (uint16_t *)heap_caps_malloc(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * sizeof(uint16_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
 
 	uint16_t audio_buffer[GW_AUDIO_BUFFER_LENGTH];
@@ -227,9 +206,7 @@ void app_main(void)
 
 		gw_system_run(GW_SYSTEM_CYCLES);
 		
-
 		// lcd
-
 		if (display_update_count == 8) {
 
 			gw_system_blit(framebuffer);
@@ -237,15 +214,11 @@ void app_main(void)
 			esp_lcd_panel_draw_bitmap(spi_lcd_handle, 0, RENDER_PADDING, GW_SCREEN_WIDTH, RENDER_HEIGHT + RENDER_PADDING, framebuffer);
 
 			display_update_count = 0;
-
 		}
 
-
 		// audio
- 
 		for (size_t i = 0; i < GW_AUDIO_BUFFER_LENGTH; i++)
 		{
-
 			sample = 0;
 					   
 			if (gw_audio_buffer[i] > 0) {
@@ -253,7 +226,6 @@ void app_main(void)
 			}
 
 			audio_buffer[i] = sample;
-						
 		}
 
 		size_t bytes_written;
@@ -261,9 +233,5 @@ void app_main(void)
 		i2s_channel_write(i2s_audio_handle, audio_buffer, sizeof(audio_buffer), &bytes_written, portMAX_DELAY);
 
 		gw_audio_buffer_copied = true;
-
 	}
-
 }
-
-
