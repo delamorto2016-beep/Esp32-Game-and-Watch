@@ -10,27 +10,25 @@
 #include <gw_system.h>
 #include <gw_romloader.h>
 
-#define DISPLAY_HEIGHT		240
+#define DISPLAY_HEIGHT		320
 #define RENDER_HEIGHT		240
-#define RENDER_PADDING		0
+#define RENDER_PADDING		40
 
 // ============================================================
-//  КНОПКИ (все пины — свободные на ESP32-S3 SuperMini)
+//  КНОПКИ — свободные пины, не пересекаются с LCD и аудио
 // ============================================================
-#define BUTTON_GAME_A		GPIO_NUM_1
-#define BUTTON_GAME_B		GPIO_NUM_6
-#define BUTTON_TIME			GPIO_NUM_3
-#define BUTTON_LEFT			GPIO_NUM_7
-#define BUTTON_RIGHT		GPIO_NUM_15   // было 12 (занят флешем)
-#define BUTTON_ALARM		GPIO_NUM_16   // было 13 (занят флешем)
-#define BUTTON_ACL			GPIO_NUM_0
+#define BUTTON_GAME_A		GPIO_NUM_6
+#define BUTTON_GAME_B		GPIO_NUM_7
+#define BUTTON_TIME			GPIO_NUM_15
+#define BUTTON_LEFT			GPIO_NUM_16
+#define BUTTON_RIGHT		GPIO_NUM_17
+#define BUTTON_ALARM		GPIO_NUM_18
+#define BUTTON_ACL			GPIO_NUM_21
 
 // ============================================================
-//  LCD (ST7789) — пины переназначены во избежание конфликтов
-//  ЗАПРЕЩЕНО использовать на S3: 9,10,11,12,13,14 (флеш),
-//  35,36,37 (PSRAM), 39-42 (JTAG)
+//  LCD (ST7789 240x320) — проверенная рабочая конфигурация
 // ============================================================
-#define LCD_PIXEL_CLOCK_HZ	(10 * 1000 * 1000)   // снижено для теста
+#define LCD_PIXEL_CLOCK_HZ	(40 * 1000 * 1000)
 #define LCD_CMD_BITS		8
 #define LCD_PARAM_BITS		8
 
@@ -38,16 +36,16 @@
 #define LCD_SCLK			5
 #define LCD_MOSI			4
 #define LCD_MISO			-1
-#define LCD_DC				8
-#define LCD_RST				17    // было 14 (занят флешем)
-#define LCD_CS				2
+#define LCD_DC				2
+#define LCD_RST				3
+#define LCD_CS				1
 
 // ============================================================
-//  АУДИО (I2S)
+//  АУДИО (I2S) — свободные пины
 // ============================================================
-#define AUD_I2S_BCK			18
-#define AUD_I2S_WS			19
-#define AUD_I2S_DATA		21
+#define AUD_I2S_BCK			38
+#define AUD_I2S_WS			39
+#define AUD_I2S_DATA		40
 
 
 unsigned char *ROM_DATA;
@@ -108,7 +106,7 @@ i2s_chan_handle_t setup_audio_i2s() {
 }
 
 // ============================================================
-//  ИНИЦИАЛИЗАЦИЯ ST7789
+//  ИНИЦИАЛИЗАЦИЯ ST7789 240x320
 // ============================================================
 esp_lcd_panel_handle_t setup_lcd_spi() {
 
@@ -121,7 +119,7 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 		.miso_io_num = LCD_MISO,
 		.quadwp_io_num = -1,
 		.quadhd_io_num = -1,
-		.max_transfer_sz = GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * sizeof(uint16_t)
+		.max_transfer_sz = GW_SCREEN_WIDTH * DISPLAY_HEIGHT * sizeof(uint16_t)
 	};
 	ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
@@ -173,8 +171,9 @@ void setup_buttons() {
 
 void app_main(void)
 {
+	// Буфер под полный экран 240x320 (для очистки и отрисовки)
 	uint16_t *framebuffer = (uint16_t *)heap_caps_malloc(
-		GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * sizeof(uint16_t),
+		GW_SCREEN_WIDTH * DISPLAY_HEIGHT * sizeof(uint16_t),
 		MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
 
 	uint16_t audio_buffer[GW_AUDIO_BUFFER_LENGTH];
@@ -188,7 +187,7 @@ void app_main(void)
 	// кнопки
 	setup_buttons();
 
-	// очистка экрана
+	// Полная очистка экрана 240x320 чёрным
 	for (int i = 0; i < DISPLAY_HEIGHT * GW_SCREEN_WIDTH; i++) {
 		framebuffer[i] = 0x0000;
 	}
@@ -217,12 +216,13 @@ void app_main(void)
 
 		gw_system_run(GW_SYSTEM_CYCLES);
 
-		// LCD
+		// LCD — игра рисуется в полосе 240x240 с отступом 40 сверху
 		if (display_update_count == 8) {
 
 			gw_system_blit(framebuffer);
 
-			esp_lcd_panel_draw_bitmap(spi_lcd_handle, 0, RENDER_PADDING,
+			esp_lcd_panel_draw_bitmap(spi_lcd_handle,
+			                          0, RENDER_PADDING,
 			                          GW_SCREEN_WIDTH,
 			                          RENDER_HEIGHT + RENDER_PADDING,
 			                          framebuffer);
