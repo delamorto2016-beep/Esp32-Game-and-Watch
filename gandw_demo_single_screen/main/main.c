@@ -8,7 +8,7 @@
 #include "freertos/FreeRTOS.h"
 
 // ============================================================
-//  ТОЛЬКО ЭКРАН — ST7789 240x320, проверенные пины
+//  ТОЛЬКО ЭКРАН — ST7789 240x320
 // ============================================================
 #define LCD_HOST			SPI2_HOST
 #define LCD_SCLK			5
@@ -25,7 +25,6 @@
 #define DISPLAY_WIDTH		240
 #define DISPLAY_HEIGHT		320
 
-
 esp_lcd_panel_handle_t setup_lcd_spi(void)
 {
 	esp_lcd_panel_handle_t panel = NULL;
@@ -37,7 +36,7 @@ esp_lcd_panel_handle_t setup_lcd_spi(void)
 		.miso_io_num = LCD_MISO,
 		.quadwp_io_num = -1,
 		.quadhd_io_num = -1,
-		.max_transfer_sz = DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(uint16_t)
+		.max_transfer_sz = 240 * 60 * sizeof(uint16_t)   // 28 КБ — безопасный чанк
 	};
 	ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
@@ -60,19 +59,17 @@ esp_lcd_panel_handle_t setup_lcd_spi(void)
 	};
 	ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io, &panel_config, &panel));
 
+	// ---- только базовые вызовы, без swap_xy / mirror / invert ----
 	ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));
 	ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
-	esp_lcd_panel_swap_xy(panel, true);
-	esp_lcd_panel_mirror(panel, false, true);
 	ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
-	esp_lcd_panel_invert_color(panel, true);
 
 	return panel;
 }
 
 void app_main(void)
 {
-	printf("=== LCD TEST START ===\n");
+	printf("=== LCD MINIMAL TEST ===\n");
 
 	esp_lcd_panel_handle_t lcd = setup_lcd_spi();
 	printf("LCD init done\n");
@@ -87,20 +84,24 @@ void app_main(void)
 	}
 	printf("Framebuffer OK at %p\n", fb);
 
-	uint32_t color = 0xF800; // 红色
+	// Сплошной красный
+	for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) {
+		fb[i] = 0xF800;
+	}
+
+	// Рисуем полосами по 60 строк, чтобы не упираться в лимит DMA
+	for (int y = 0; y < DISPLAY_HEIGHT; y += 60) {
+		int h = (DISPLAY_HEIGHT - y < 60) ? (DISPLAY_HEIGHT - y) : 60;
+		esp_lcd_panel_draw_bitmap(lcd,
+		                          0, y,
+		                          DISPLAY_WIDTH, y + h,
+		                          fb + (y * DISPLAY_WIDTH));
+		printf("drawn rows %d..%d\n", y, y + h);
+	}
+
+	printf("=== DONE — should be RED ===\n");
 
 	while (true) {
-		for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) {
-			fb[i] = color;
-		}
-		esp_lcd_panel_draw_bitmap(lcd, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, fb);
-		printf("drawn color=0x%04X\n", (unsigned)color);
-
-		if (color == 0xF800)      color = 0x07E0; // 绿
-		else if (color == 0x07E0) color = 0x001F; // 蓝
-		else if (color == 0x001F) color = 0xFFFF; // 白
-		else                      color = 0xF800; // 红
-
 		vTaskDelay(pdMS_TO_TICKS(1000));
 	}
 }
