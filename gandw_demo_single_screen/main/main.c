@@ -18,7 +18,8 @@
 #define LCD_RST				3
 #define LCD_CS				1
 
-#define LCD_PIXEL_CLOCK_HZ	(10 * 1000 * 1000)
+// Частота снижена, чтобы исключить проблемы с целостностью сигнала
+#define LCD_PIXEL_CLOCK_HZ	(1 * 1000 * 1000)
 #define LCD_CMD_BITS		8
 #define LCD_PARAM_BITS		8
 
@@ -36,7 +37,8 @@ esp_lcd_panel_handle_t setup_lcd_spi(void)
 		.miso_io_num = LCD_MISO,
 		.quadwp_io_num = -1,
 		.quadhd_io_num = -1,
-		.max_transfer_sz = 240 * 60 * sizeof(uint16_t)   // 28 КБ — безопасный чанк
+		// Ограничиваем размер одного трансфера, чтобы не упереться в лимит DMA
+		.max_transfer_sz = DISPLAY_WIDTH * 60 * sizeof(uint16_t)
 	};
 	ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
@@ -46,8 +48,11 @@ esp_lcd_panel_handle_t setup_lcd_spi(void)
 		.pclk_hz = LCD_PIXEL_CLOCK_HZ,
 		.lcd_cmd_bits = LCD_CMD_BITS,
 		.lcd_param_bits = LCD_PARAM_BITS,
-		.spi_mode = 0,
-		.trans_queue_depth = 10
+		.spi_mode = 0,          // если не заработает — попробовать 3
+		.trans_queue_depth = 10,
+		// ---- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ----
+		// Обход бага таймингов DC-линии в esp_lcd для некоторых ST7789
+		.flags.dc_low_on_data = 0,
 	};
 	ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(
 		(esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io));
@@ -59,7 +64,7 @@ esp_lcd_panel_handle_t setup_lcd_spi(void)
 	};
 	ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io, &panel_config, &panel));
 
-	// ---- только базовые вызовы, без swap_xy / mirror / invert ----
+	// Минимальный набор вызовов — без swap_xy, mirror, invert
 	ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));
 	ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
 	ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
@@ -69,37 +74,37 @@ esp_lcd_panel_handle_t setup_lcd_spi(void)
 
 void app_main(void)
 {
-	printf("=== LCD MINIMAL TEST ===\n");
+	printf("=== ТЕСТ ЭКРАНА С IRAM-ИСПРАВЛЕНИЕМ ===\n");
 
 	esp_lcd_panel_handle_t lcd = setup_lcd_spi();
-	printf("LCD init done\n");
+	printf("Инициализация LCD завершена\n");
 
 	uint16_t *fb = (uint16_t *)heap_caps_malloc(
 		DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(uint16_t),
 		MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
 
 	if (fb == NULL) {
-		printf("FATAL: framebuffer malloc failed\n");
+		printf("ОШИБКА: не удалось выделить память под фреймбуфер\n");
 		return;
 	}
-	printf("Framebuffer OK at %p\n", fb);
+	printf("Фреймбуфер выделен по адресу %p\n", fb);
 
-	// Сплошной красный
+	// Заполняем красным цветом
 	for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) {
 		fb[i] = 0xF800;
 	}
 
-	// Рисуем полосами по 60 строк, чтобы не упираться в лимит DMA
+	// Рисуем полосами по 60 строк — чтобы не превысить лимит DMA
 	for (int y = 0; y < DISPLAY_HEIGHT; y += 60) {
 		int h = (DISPLAY_HEIGHT - y < 60) ? (DISPLAY_HEIGHT - y) : 60;
 		esp_lcd_panel_draw_bitmap(lcd,
 		                          0, y,
 		                          DISPLAY_WIDTH, y + h,
 		                          fb + (y * DISPLAY_WIDTH));
-		printf("drawn rows %d..%d\n", y, y + h);
+		printf("Нарисованы строки %d..%d\n", y, y + h);
 	}
 
-	printf("=== DONE — should be RED ===\n");
+	printf("=== ГОТОВО — экран должен быть КРАСНЫМ ===\n");
 
 	while (true) {
 		vTaskDelay(pdMS_TO_TICKS(1000));
