@@ -30,7 +30,7 @@
 #define LCD_HOST			SPI2_HOST
 #define LCD_SCLK			5
 #define LCD_MOSI			4
-#define LCD_MISO			-1
+#define LCD_MISO			2
 #define LCD_DC				8
 #define LCD_RST				14
 
