@@ -3,7 +3,7 @@
 #include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
-#include "esp_lcd_vendor.h" // Подключаем общие LCD драйверы (включая ST7789)
+#include "esp_lcd_panel_vendor.h" // Корректный заголовочный файл для ST7789
 #include "driver/i2s_std.h"
 #include "freertos/FreeRTOS.h"
 #include <gw_system.h>
@@ -13,32 +13,32 @@
 #define RENDER_HEIGHT		240
 #define RENDER_PADDING		0
 
-// Кнопки управления (Оставляем ваши текущие пины, BUTTON_GAME_B изменен с 2 на 6, т.к. 2 занят под CS)
+// Кнопки управления (BUTTON_GAME_B изменен с 2 на 6, т.к. 2 занят под CS экрана)
 #define BUTTON_GAME_A		GPIO_NUM_1
-#define BUTTON_GAME_B		GPIO_NUM_6   // Изменено на свободный пин 6 (был 2, но 2 теперь отдан под CS экрана)
+#define BUTTON_GAME_B		GPIO_NUM_6   
 #define BUTTON_TIME			GPIO_NUM_3
 #define BUTTON_LEFT			GPIO_NUM_7
 #define BUTTON_RIGHT		GPIO_NUM_12
 #define BUTTON_ALARM		GPIO_NUM_13
-#define BUTTON_ACL			GPIO_NUM_0   // BOOT кнопка платы
+#define BUTTON_ACL			GPIO_NUM_0   
 
-// LCD Конфигурация под вашу схему
+// LCD Конфигурация
 #define LCD_PIXEL_CLOCK_HZ	(40 * 1000 * 1000)
 #define LCD_CMD_BITS		8
 #define LCD_PARAM_BITS		8
 
 #define LCD_HOST			SPI2_HOST
-#define LCD_SCLK			5            // Ваш исправленный SCK
-#define LCD_MOSI			4            // Ваш исправленный MOSI
-#define LCD_MISO			-1           // Для ST7789 пин MISO не нужен, освобождаем его
-#define LCD_DC				8            // Ваш DC
-#define LCD_RST				14           // Ваш RESET
-#define LCD_CS				2            // Наш НОВЫЙ выделенный пин CS!
+#define LCD_SCLK			5            
+#define LCD_MOSI			4            
+#define LCD_MISO			-1           
+#define LCD_DC				8            
+#define LCD_RST				14           
+#define LCD_CS				2            
 
-// ИСПРАВЛЕНИЕ АУДИО: Переносим аудио на свободные безопасные пины, чтобы не было конфликта с экраном!
-#define AUD_I2S_BCK			18           // Свободный пин платы
-#define AUD_I2S_WS			19           // Свободный пин платы
-#define AUD_I2S_DATA		21           // Свободный пин платы
+// Аудио пины перенесены, чтобы освободить пины экрана
+#define AUD_I2S_BCK			18           
+#define AUD_I2S_WS			19           
+#define AUD_I2S_DATA		21           
 
 
 unsigned char *ROM_DATA;
@@ -98,7 +98,7 @@ i2s_chan_handle_t setup_audio_i2s() {
 	return i2s_audio_handle;
 }
 
-// РАБОЧИЙ БЛОК ДЛЯ ВАШЕГО ЭКРАНА ST7789
+// Чистая инициализация ST7789
 esp_lcd_panel_handle_t setup_lcd_spi() {
 
 	esp_lcd_panel_handle_t spi_lcd_handle = NULL;
@@ -116,11 +116,11 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 
 	esp_lcd_panel_io_spi_config_t io_config = {
 		.dc_gpio_num = LCD_DC,
-		.cs_gpio_num = LCD_CS, // Наш новый пин CS (GPIO 2)
+		.cs_gpio_num = LCD_CS, 
 		.pclk_hz = LCD_PIXEL_CLOCK_HZ,
 		.lcd_cmd_bits = LCD_CMD_BITS,
 		.lcd_param_bits = LCD_PARAM_BITS,
-		.spi_mode = 3, // Для ST7789 режим SPI обычно равен 3
+		.spi_mode = 3, 
 		.trans_queue_depth = 10
 	};
 	ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
@@ -131,6 +131,7 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 		.bits_per_pixel = 16
 	};
 
+	// Стандартная функция создания панели ST7789 из esp_lcd_panel_vendor.h
 	ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &spi_lcd_handle));
 	
 	ESP_ERROR_CHECK(esp_lcd_panel_reset(spi_lcd_handle));
@@ -138,10 +139,11 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 	esp_lcd_panel_swap_xy(spi_lcd_handle, true);
 	esp_lcd_panel_mirror(spi_lcd_handle, false, true);
 	ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(spi_lcd_handle, true));
-	esp_lcd_panel_invert_color(spi_lcd_handle, true); // Включаем инверсию цветов для корректного отображения на ST7789
+	esp_lcd_panel_invert_color(spi_lcd_handle, true); 
 
 	return spi_lcd_handle;
 }
+
 
 */
 
