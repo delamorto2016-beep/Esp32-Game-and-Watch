@@ -28,7 +28,7 @@
 // ============================================================
 //  LCD (ST7789 240x320) — проверенная рабочая конфигурация
 // ============================================================
-#define LCD_PIXEL_CLOCK_HZ	(40 * 1000 * 1000)
+#define LCD_PIXEL_CLOCK_HZ	(60 * 1000 * 1000)
 #define LCD_CMD_BITS		8
 #define LCD_PARAM_BITS		8
 
@@ -129,7 +129,7 @@ esp_lcd_panel_handle_t setup_lcd_spi() {
 		.pclk_hz = LCD_PIXEL_CLOCK_HZ,
 		.lcd_cmd_bits = LCD_CMD_BITS,
 		.lcd_param_bits = LCD_PARAM_BITS,
-		.spi_mode = 3,
+		.spi_mode = 0,
 		.trans_queue_depth = 10
 	};
 	ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
